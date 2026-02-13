@@ -32,18 +32,33 @@ aws-serverless-image-compressor
 └── README.md
 ```
 
+## � Performance Demonstration
+
+Our pipeline achieves massive compression ratios by stripping metadata and using optimized encoders.
+
+### 1. Uploading via Postman
+A high-resolution image (~562 KB) is sent to the `/upload` endpoint.
+![Postman Upload](screenshots/upload_test.png)
+
+### 2. Result in S3
+The processed image in the destination bucket is reduced to only **34.8 KB**—a **93% reduction** in size!
+![Compression Result](screenshots/compression_result.png)
+
 ## 🛠 Setup & Deployment
-Please refer to the [Setup Notes](infrastructure/setup-notes.md) for detailed instructions on:
-- S3 Bucket creation
-- IAM Role configuration
-- Cross-platform `sharp` installation
-- Environment variable setup
+1. **S3 Buckets**: Create a Source and Destination bucket.
+2. **Lambda**: Deploy the `lambda/` folder with `sharp` (installed for Linux).
+3. **IAM**: Ensure Lambda has `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` permissions.
+4. **Environment Variables**:
+   - `SOURCE_BUCKET`: Your raw bucket name.
+   - `COMPRESSED_BUCKET`: Your destination bucket name.
+   - `IMAGE_QUALITY`: Defaults to 80.
+   - `RESIZE_WIDTH`: Defaults to 800.
 
 ## 🧪 Testing with Postman
-1. Create a `POST` request to your Lambda/API Gateway URL.
+1. Create a `POST` request to your API Gateway URL.
 2. Under the **Body** tab, select **form-data**.
-3. Add a key `image` and select your image file.
-4. Send the request and check your S3 buckets!
+3. Add a key `image`, select a large JPG/PNG file.
+4. Send the request and watch the magic happen in S3!
 
 ---
 Developed as part of the AWS Serverless Image Compressor project.
