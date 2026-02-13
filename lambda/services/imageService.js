@@ -23,15 +23,20 @@ export const processAndStorageImage = async (bucket, key, destBucket) => {
   const resizeWidth = parseInt(process.env.RESIZE_WIDTH || '800', 10);
   const quality = parseInt(process.env.IMAGE_QUALITY || '80', 10);
 
-  let transformer = image.resize({ width: resizeWidth, withoutEnlargement: true });
+  // Initialize transformer with auto-rotation (preserves EXIF orientation)
+  // and metadata stripping (removes ICC profiles, EXIF, etc. to save space)
+  let transformer = image
+    .rotate()
+    .resize({ width: resizeWidth, withoutEnlargement: true })
+    .withMetadata({ strip: true });
 
   // Format-specific optimizations
   if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-    transformer = transformer.jpeg({ quality });
+    transformer = transformer.jpeg({ quality, mozjpeg: true });
   } else if (metadata.format === 'png') {
-    transformer = transformer.png({ quality, compressionLevel: 9 });
+    transformer = transformer.png({ quality, palette: true, compressionLevel: 9 });
   } else if (metadata.format === 'webp') {
-    transformer = transformer.webp({ quality });
+    transformer = transformer.webp({ quality, lossless: false });
   }
 
   const compressedBuffer = await transformer.toBuffer();

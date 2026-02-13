@@ -28,7 +28,7 @@ Follow these exact steps to deploy your Image Compression Pipeline.
       "Statement": [
         {
           "Effect": "Allow",
-          "Action": ["s3:GetObject", "s3:DeleteObject"],
+          "Action": ["s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
           "Resource": "arn:aws:s3:::YOUR_RAW_BUCKET_NAME/*"
         },
         {
@@ -76,11 +76,37 @@ Follow these exact steps to deploy your Image Compression Pipeline.
 ---
 
 ## 5. Deployment (Local to AWS)
-1.  Open your local terminal in the `lambda/` folder.
-2.  Run: `npm install --os=linux --cpu=x64 sharp` (CRITICAL).
-3.  Run: `npm install`.
-4.  Select all files inside the `lambda/` folder (index.js, server.js, etc.) and compress them into a `.zip` file.
-5.  In AWS Lambda, under the **Code** tab, click **Upload from** -> **.zip file**.
+1.  Open your local terminal (PowerShell or Bash) in the `lambda/` folder.
+2.  **CRITICAL**: Delete your existing `node_modules` and `package-lock.json` to start clean:
+    ```powershell
+    # On Windows PowerShell
+    Remove-Item -Recurse -Force node_modules, package-lock.json
+    ```
+3.  **Install for Linux**: Run this exact command to pull the Linux binaries instead of Windows ones:
+    ```bash
+    npm install --platform=linux --arch=x64 sharp
+    ```
+    *(Note: Use `--arch=arm64` if your Lambda architecture is set to arm64/Graviton).*
+4.  Install remaining dependencies:
+    ```bash
+    npm install
+    ```
+5.  Select all files **inside** the `lambda/` folder (`index.js`, `server.js`, `processor.js`, `node_modules`, `package.json`, etc.) and zip them.
+    -   *Crucial: Do NOT zip the folder itself, only the files inside it.*
+6.  In AWS Lambda, under the **Code** tab, click **Upload from** -> **.zip file**.
+
+---
+
+## 🆘 Troubleshooting: "Cannot find module sharp-linux-x64.node"
+If you see this error in CloudWatch, it means the Linux binary is missing.
+
+### The Fix:
+1.  Ensure you deleted `node_modules` before running the `--platform=linux` command.
+2.  Check your Lambda **Architecture** (Configuration -> General). If it says `x86_64`, you need `--arch=x64`. If it says `arm64`, you need `--arch=arm64`.
+3.  **For Sharp v0.33+ (Modern way)**: If the above fails, try:
+    ```bash
+    npm install --include=optional @img/sharp-linux-x64
+    ```
 
 ---
 
