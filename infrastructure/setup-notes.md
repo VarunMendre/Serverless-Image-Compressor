@@ -1,50 +1,105 @@
-# Infrastructure Setup & Deployment Notes
+# AWS Infrastructure Setup Guide (Step-by-Step)
 
-## 1. AWS S3 Buckets
-Create two buckets in the same region:
-- **Source Bucket**: e.g., `my-raw-images-bucket`
-- **Compressed Bucket**: e.g., `my-compressed-images-bucket`
+Follow these exact steps to deploy your Image Compression Pipeline.
 
-## 2. IAM Role Permissions
-Your Lambda function needs an execution role with the following permissions:
-- `s3:GetObject` and `s3:DeleteObject` on the **Source Bucket**.
-- `s3:PutObject` on the **Compressed Bucket**.
-- `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents` for CloudWatch.
+---
 
-## 3. Environment Variables
-Set these variables in the Lambda configuration:
-- `AWS_NODEJS_CONNECTION_REUSE_ENABLED`: `1` (for performance)
-- `SOURCE_BUCKET`: `my-raw-images-bucket`
-- `COMPRESSED_BUCKET`: `my-compressed-images-bucket`
+## 1. Create S3 Buckets
+1.  Log in to the **AWS Management Console**.
+2.  Search for **S3** in the top search bar and click it.
+3.  Click the orange **Create bucket** button.
+4.  **Bucket Name**: Enter a name (e.g., `my-images-raw-xyz`).
+5.  **Region**: Select a region (e.g., `us-east-1`). *Remember this region!*
+6.  Scroll down and click **Create bucket**.
+7.  **Repeat** these steps to create a second bucket (e.g., `my-images-compressed-xyz`).
 
-## 4. Lambda Configuration
-- **Memory**: Recommended **512MB** or **1024MB** (Sharp is memory intensive).
-- **Timeout**: Recommended **15-20 seconds**.
-- **Runtime**: Node.js 18.x or 20.x.
+---
 
-## 5. Local Packaging for Lambda (CRITICAL)
-Since the `sharp` library contains native binaries, you must install it for the Lambda Linux environment.
+## 2. Create IAM Execution Role
+1.  Search for **IAM** and click it.
+2.  Click **Roles** on the left sidebar, then click **Create role**.
+3.  Select **AWS service** and choice **Lambda** from the "Service or use case" dropdown.
+4.  Click **Next**.
+5.  Click **Create policy** (it will open a new tab).
+6.  In the Policy Editor, click the **JSON** tab and paste this:
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["s3:GetObject", "s3:DeleteObject"],
+          "Resource": "arn:aws:s3:::YOUR_RAW_BUCKET_NAME/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": ["s3:PutObject"],
+          "Resource": "arn:aws:s3:::YOUR_COMPRESSED_BUCKET_NAME/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        }
+      ]
+    }
+    ```
+    *(Replace names with your actual bucket names)*.
+7.  Click **Next**, name it `LambdaImageCompressorPolicy`, and click **Create policy**.
+8.  Go back to the **Create role** tab, refresh the policies list, search for your new policy, and check the box next to it.
+9.  Click **Next**, name the role `ImageCompressorRole`, and click **Create role**.
 
-From the `lambda/` directory, run:
-```bash
-# Remove local Windows node_modules
-rm -rf node_modules package-lock.json
+---
 
-# Install for Linux x64 (Standard Lambda architecture)
-npm install --os=linux --cpu=x64 sharp
-npm install
-```
-Then ZIP all files in the `lambda/` folder (not the folder itself) and upload to AWS.
+## 3. Create Lambda Function
+1.  Search for **Lambda** and click it.
+2.  Click **Create function**.
+3.  Choose **Author from scratch**.
+4.  **Function name**: `ImageCompressor`.
+5.  **Runtime**: **Node.js 18.x** or higher.
+6.  Click **Change default execution role**, select **Use an existing role**, and pick `ImageCompressorRole`.
+7.  Click **Create function**.
 
-## 6. S3 Trigger
-Go to the **Source Bucket** -> **Properties** -> **Event Notifications**.
-- Click **Create event notification**.
-- Name: `TriggerImageCompression`.
-- Event types: `s3:ObjectCreated:*`.
-- Destination: **Lambda Function** (select your function).
+---
 
-## 7. API Gateway (Optional for Postman)
-To use the Postman upload, create an **HTTP API** or **REST API**:
-- Route: `ANY /{proxy+}` or just `POST /upload`.
-- Integration: **Lambda Function**.
-- **IMPORTANT**: If using REST API, enable **Binary Media Types** for `multipart/form-data`.
+## 4. Configure Lambda Settings
+1.  Inside your function, go to the **Configuration** tab -> **General configuration**.
+2.  Click **Edit**. Set **Timeout** to `20 seconds` and **Memory** to `512 MB`. Click **Save**.
+3.  Go to **Configuration** tab -> **Environment variables**.
+4.  Click **Edit** -> **Add environment variable**:
+    - `SOURCE_BUCKET`: (your raw bucket name)
+    - `COMPRESSED_BUCKET`: (your compressed bucket name)
+    - `IMAGE_QUALITY`: `80`
+    - `RESIZE_WIDTH`: `800`
+5.  Click **Save**.
+
+---
+
+## 5. Deployment (Local to AWS)
+1.  Open your local terminal in the `lambda/` folder.
+2.  Run: `npm install --os=linux --cpu=x64 sharp` (CRITICAL).
+3.  Run: `npm install`.
+4.  Select all files inside the `lambda/` folder (index.js, server.js, etc.) and compress them into a `.zip` file.
+5.  In AWS Lambda, under the **Code** tab, click **Upload from** -> **.zip file**.
+
+---
+
+## 6. Setup S3 Trigger
+1.  Go back to your **Source S3 Bucket** page.
+2.  Click the **Properties** tab.
+3.  Scroll down to **Event notifications** and click **Create event notification**.
+4.  **Event name**: `CompressOnUpload`.
+5.  **Event types**: Check **All object create events**.
+6.  **Destination**: Select **Lambda function** and pick your `ImageCompressor` function.
+7.  Click **Save changes**.
+
+---
+
+## 7. Setup API Gateway (For Postman)
+1.  Search for **API Gateway** and click it.
+2.  Find **HTTP API** and click **Build**.
+3.  Click **Add integration**, select **Lambda**, and pick your `ImageCompressor`.
+4.  **API Name**: `ImageUploadAPI`. Click **Next**.
+5.  **Configure routes**: Set Method to `ANY` and Resource path to `/{proxy+}`. Click **Next** -> **Next** -> **Create**.
+6.  Copy the **Invoke URL**. 
+7.  In Postman, use `POST {InvokeURL}/upload` with `form-data` and key `image`.

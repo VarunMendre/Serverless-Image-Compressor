@@ -20,21 +20,25 @@ export const processAndStorageImage = async (bucket, key, destBucket) => {
   const image = sharp(buffer);
   const metadata = await image.metadata();
 
-  let transformer = image.resize({ width: 800, withoutEnlargement: true });
+  const resizeWidth = parseInt(process.env.RESIZE_WIDTH || '800', 10);
+  const quality = parseInt(process.env.IMAGE_QUALITY || '80', 10);
+
+  let transformer = image.resize({ width: resizeWidth, withoutEnlargement: true });
 
   // Format-specific optimizations
   if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-    transformer = transformer.jpeg({ quality: 80 });
+    transformer = transformer.jpeg({ quality });
   } else if (metadata.format === 'png') {
-    transformer = transformer.png({ quality: 80, compressionLevel: 9 });
+    transformer = transformer.png({ quality, compressionLevel: 9 });
   } else if (metadata.format === 'webp') {
-    transformer = transformer.webp({ quality: 80 });
+    transformer = transformer.webp({ quality });
   }
 
   const compressedBuffer = await transformer.toBuffer();
 
   // 3. Upload to Destination Bucket
-  const destKey = `compressed-${key}`;
+  const prefix = process.env.COMPRESSED_PREFIX || 'compressed-';
+  const destKey = `${prefix}${key}`;
   await s3.send(new PutObjectCommand({
     Bucket: destBucket,
     Key: destKey,

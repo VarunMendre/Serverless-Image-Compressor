@@ -9,10 +9,11 @@ export const processImage = async (event) => {
   for (const record of event.Records) {
     const bucket = record.s3.bucket.name;
     const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+    const prefix = process.env.COMPRESSED_PREFIX || 'compressed-';
 
     // Safety check: Prevent recursive loops
-    if (key.startsWith('compressed-')) {
-      console.log(`Skipping already compressed file: ${key}`);
+    if (key.startsWith(prefix)) {
+      console.log(`Skipping already processed file with prefix "${prefix}": ${key}`);
       continue;
     }
 
