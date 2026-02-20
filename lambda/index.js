@@ -1,17 +1,20 @@
 import serverless from 'serverless-http';
 import app from './server.js';
 import { processImage } from './processor.js';
+import { validateEnv } from './config/env.js';
 
 const serverlessHandler = serverless(app);
 
+/**
+ * Main Lambda Handler Orchestrator
+ */
 export const handler = async (event, context) => {
-  // Check if it's an S3 event
-  if (event.Records && event.Records[0].s3) {
-    console.log('Detected S3 Event - Triggering Compression');
-    return await processImage(event);
-  }
+  validateEnv(); // Fail fast if misconfigured
+  const isS3Event = event.Records && event.Records[0].s3;
 
-  // Otherwise, handle as HTTP request (Express)
-  console.log('Detected HTTP Event - Routing to Express');
-  return await serverlessHandler(event, context);
+  console.log(`[Event] ${isS3Event ? 'S3 (Processing)' : 'HTTP (Express)'} detected`);
+
+  return isS3Event
+    ? await processImage(event)
+    : await serverlessHandler(event, context);
 };

@@ -1,26 +1,19 @@
 import { processAndStorageImage } from './services/imageService.js';
+import { config } from './config/env.js';
 
 /**
  * Handler for S3 Events
  */
 export const processImage = async (event) => {
-  const destBucket = process.env.COMPRESSED_BUCKET;
+  const { destBucket, prefix } = config;
 
-  for (const record of event.Records) {
-    const bucket = record.s3.bucket.name;
-    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-    const prefix = process.env.COMPRESSED_PREFIX || 'compressed-';
+  const tasks = event.Records
+    .map(record => ({
+      bucket: record.s3.bucket.name,
+      key: decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '))
+    }))
+    .filter(({ key }) => !key.startsWith(prefix))
+    .map(({ bucket, key }) => processAndStorageImage(bucket, key, destBucket));
 
-    // Safety check: Prevent recursive loops
-    if (key.startsWith(prefix)) {
-      console.log(`Skipping already processed file with prefix "${prefix}": ${key}`);
-      continue;
-    }
-
-    try {
-      await processAndStorageImage(bucket, key, destBucket);
-    } catch (error) {
-      console.error(`Error processing ${bucket}/${key}:`, error);
-    }
-  }
+  return await Promise.all(tasks);
 };

@@ -1,0 +1,43 @@
+service: aws-serverless-image-compressor
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-south-1
+  environment:
+    SOURCE_BUCKET: varun-raw-images-bucket
+    COMPRESSED_BUCKET: varun-compressed-images-bucket
+    IMAGE_QUALITY: '80'
+    RESIZE_WIDTH: '800'
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::varun-raw-images-bucket/*
+            - arn:aws:s3:::varun-raw-images-bucket
+            - arn:aws:s3:::varun-compressed-images-bucket/*
+            - arn:aws:s3:::varun-compressed-images-bucket
+
+functions:
+  main:
+    handler: lambda/index.handler
+    events:
+      - httpApi: '*'
+      - s3:
+          bucket: varun-raw-images-bucket
+          event: s3:ObjectCreated:*
+          existing: true # Assumes bucket already exists. Change to false to let Serverless create it.
+
+package:
+  patterns:
+    - '!frontend/**'
+    - '!screenshots/**'
+    - 'lambda/**'
+    - '!node_modules/**'
+    - 'lambda/node_modules/**'

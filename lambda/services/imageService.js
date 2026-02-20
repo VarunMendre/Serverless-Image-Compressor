@@ -1,60 +1,71 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { config } from '../config/env.js';
 
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+const s3 = new S3Client({ region: config.region });
 
 /**
- * Service to handle image processing lifecycle:
- * Download -> Compress -> Upload -> Delete
+ * Downloads an image from an S3 bucket
  */
-export const processAndStorageImage = async (bucket, key, destBucket) => {
-  console.log(`[Service] Processing image: ${bucket}/${key}`);
-
-  // 1. Get the image from Source Bucket
+const downloadImage = async (bucket, key) => {
   const { Body, ContentType } = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-  
-  // Convert stream to buffer
   const buffer = Buffer.from(await Body.transformToByteArray());
+  return { buffer, contentType: ContentType };
+};
 
-  // 2. Compress the image using Sharp
+/**
+ * Compresses an image using Sharp
+ */
+const compressImage = async (buffer) => {
   const image = sharp(buffer);
-  const metadata = await image.metadata();
+  const { format } = await image.metadata();
 
-  const resizeWidth = parseInt(process.env.RESIZE_WIDTH || '800', 10);
-  const quality = parseInt(process.env.IMAGE_QUALITY || '80', 10);
+  const transformers = {
+    jpeg: (img) => img.jpeg({ quality: config.quality, mozjpeg: true }),
+    jpg: (img) => img.jpeg({ quality: config.quality, mozjpeg: true }),
+    png: (img) => img.png({ quality: config.quality, palette: true, compressionLevel: 9 }),
+    webp: (img) => img.webp({ quality: config.quality, lossless: false }),
+  };
 
-  // Initialize transformer with auto-rotation (preserves EXIF orientation)
-  // and metadata stripping (removes ICC profiles, EXIF, etc. to save space)
-  let transformer = image
+  const result = image
     .rotate()
-    .resize({ width: resizeWidth, withoutEnlargement: true })
+    .resize({ width: config.width, withoutEnlargement: true })
     .withMetadata({ strip: true });
 
-  // Format-specific optimizations
-  if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-    transformer = transformer.jpeg({ quality, mozjpeg: true });
-  } else if (metadata.format === 'png') {
-    transformer = transformer.png({ quality, palette: true, compressionLevel: 9 });
-  } else if (metadata.format === 'webp') {
-    transformer = transformer.webp({ quality, lossless: false });
-  }
+  return await (transformers[format] ? transformers[format](result) : result).toBuffer();
+};
 
-  const compressedBuffer = await transformer.toBuffer();
-
-  // 3. Upload to Destination Bucket
-  const prefix = process.env.COMPRESSED_PREFIX || 'compressed-';
-  const destKey = `${prefix}${key}`;
+/**
+ * Uploads a buffer to an S3 bucket
+ */
+const uploadImage = async (bucket, key, buffer, contentType) => {
   await s3.send(new PutObjectCommand({
-    Bucket: destBucket,
-    Key: destKey,
-    Body: compressedBuffer,
-    ContentType: ContentType
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType
   }));
-  console.log(`[Service] Successfully uploaded to: ${destBucket}/${destKey}`);
+};
 
-  // 4. Delete from Source Bucket
+/**
+ * Deletes an object from an S3 bucket
+ */
+const deleteImage = async (bucket, key) => {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-  console.log(`[Service] Successfully deleted from: ${bucket}/${key}`);
+};
+
+/**
+ * Orchestrates the full image processing lifecycle
+ */
+export const processAndStorageImage = async (bucket, key, destBucket) => {
+  console.log(`[Service] Processing: ${bucket}/${key}`);
+
+  const { buffer, contentType } = await downloadImage(bucket, key);
+  const compressedBuffer = await compressImage(buffer);
+  const destKey = `${config.prefix}${key}`;
+
+  await uploadImage(destBucket, destKey, compressedBuffer, contentType);
+  await deleteImage(bucket, key);
 
   return { destBucket, destKey };
 };
