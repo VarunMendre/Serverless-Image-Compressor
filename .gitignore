@@ -1,7 +1,5 @@
 .env
 lambda/node_modules
-lambda/package-lock.json
 frontend/node_modules
-frontend/package-lock.json
 frontend/public
 
