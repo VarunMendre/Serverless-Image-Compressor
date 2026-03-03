@@ -38,7 +38,7 @@ export const checkStatus = asyncHandler(async (req, res) => {
     // Check if the compressed file exists
     try {
         await s3.send(new HeadObjectCommand({ Bucket: destBucket, Key: destKey }));
-        
+
         // If it exists, generate pre-signed URLs
         const previewUrl = await getPresignedUrl(destBucket, destKey);
         const downloadUrl = await getPresignedUrl(destBucket, destKey, 3600, key);
@@ -46,8 +46,7 @@ export const checkStatus = asyncHandler(async (req, res) => {
         const data = {
             status: 'completed',
             url: previewUrl, // URL for <img> tag
-            downloadUrl: downloadUrl, // URL for downloading
-            s3Url: `https://${destBucket}.s3.amazonaws.com/${destKey}` // Keep for debugging
+            downloadUrl: downloadUrl // URL for downloading
         };
 
         return res.status(200).json(new ApiResponse(200, data, "Image is completed"));

@@ -76,8 +76,6 @@ export const getPresignedUrl = async (bucket, key, expiresIn = 3600, downloadNam
  * Orchestrates the full image processing lifecycle
  */
 export const processAndStorageImage = async (bucket, key, destBucket) => {
-  console.log(`[Service] Processing: ${bucket}/${key}`);
-
   const { buffer, contentType } = await downloadImage(bucket, key);
   const compressedBuffer = await compressImage(buffer);
   const destKey = `${config.prefix}${key}`;

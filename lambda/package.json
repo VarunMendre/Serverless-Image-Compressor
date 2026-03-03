@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "start": "node --watch --env-file=.env server.js",
-    "test:env": "node --env-file=.env test-env.js",
     "build:lambda": "npm install --os=linux --cpu=x64 sharp"
   },
   "dependencies": {
