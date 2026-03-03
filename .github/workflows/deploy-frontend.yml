@@ -33,7 +33,7 @@ jobs:
           npm run build
         env:
           # This should be the URL of your deployed Lambda API Gateway
-          VITE_API_URL: https://nzsx2hp0gl.execute-api.ap-south-1.amazonaws.com
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Sync to S3
         uses: jakejarvis/s3-sync-action@master
