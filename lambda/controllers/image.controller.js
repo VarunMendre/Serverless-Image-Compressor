@@ -6,14 +6,24 @@ import { config } from '../config/env.js';
 
 const s3 = new S3Client({ region: config.region });
 
+import { processAndStorageImage, getPresignedUrl } from '../services/imageService.js';
+
 /**
  * Handles image upload response
  */
 export const uploadImage = asyncHandler(async (req, res) => {
     if (!req.file) throw new ApiError(400, "No image file provided");
 
+    const { key, bucket } = req.file;
+
+    // LOCAL TESTING WORKAROUND:
+    if (!process.env.LAMBDA_TASK_ROOT) {
+        processAndStorageImage(bucket, key, config.destBucket)
+            .catch(err => console.error(`[Local] Background compression failed:`, err));
+    }
+
     return res.status(200).json(
-        new ApiResponse(200, { key: req.file.key }, "Image uploaded successfully")
+        new ApiResponse(200, { key }, "Image uploaded successfully")
     );
 });
 
@@ -25,18 +35,27 @@ export const checkStatus = asyncHandler(async (req, res) => {
     const { destBucket, cloudFrontDomain, prefix } = config;
     const destKey = `${prefix}${key}`;
 
-    const statuses = {
-        completed: {
+    // Check if the compressed file exists
+    try {
+        await s3.send(new HeadObjectCommand({ Bucket: destBucket, Key: destKey }));
+        
+        // If it exists, generate pre-signed URLs
+        const previewUrl = await getPresignedUrl(destBucket, destKey);
+        const downloadUrl = await getPresignedUrl(destBucket, destKey, 3600, key);
+
+        const data = {
             status: 'completed',
-            url: cloudFrontDomain ? `https://${cloudFrontDomain}/${destKey}` : null,
-            s3Url: `https://${destBucket}.s3.amazonaws.com/${destKey}`
-        },
-        processing: { status: 'processing' }
-    };
+            url: previewUrl, // URL for <img> tag
+            downloadUrl: downloadUrl, // URL for downloading
+            s3Url: `https://${destBucket}.s3.amazonaws.com/${destKey}` // Keep for debugging
+        };
 
-    const s3Status = await s3.send(new HeadObjectCommand({ Bucket: destBucket, Key: destKey }))
-        .then(() => 'completed')
-        .catch(err => err.name === 'NotFound' ? 'processing' : Promise.reject(err));
+        return res.status(200).json(new ApiResponse(200, data, "Image is completed"));
 
-    return res.status(200).json(new ApiResponse(200, statuses[s3Status], `Image is ${s3Status}`));
+    } catch (error) {
+        if (error.name === 'NotFound') {
+            return res.status(200).json(new ApiResponse(200, { status: 'processing' }, "Image is processing"));
+        }
+        throw error;
+    }
 });

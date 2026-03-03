@@ -106,7 +106,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-ap-south-1-bae94dec-f917",
-          "S3Key": "serverless/aws-serverless-image-compressor/dev/1771612863315-2026-02-20T18:41:03.315Z/aws-serverless-image-compressor.zip"
+          "S3Key": "serverless/aws-serverless-image-compressor/dev/1772433730270-2026-03-02T06:42:10.270Z/aws-serverless-image-compressor.zip"
         },
         "Handler": "lambda/index.handler",
         "Runtime": "nodejs20.x",
@@ -132,14 +132,14 @@
         "MainLogGroup"
       ]
     },
-    "MainLambdaVersionKL2WfdGUnkZcAn4UNy2UwBrZtI497xi5LQKmnllM": {
+    "MainLambdaVersion7JSjkXlU14oNTSnpnV2jjgZyUBd5X0xClRnbba8Tk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "MainLambdaFunction"
         },
-        "CodeSha256": "VsYTTbqozToNUahlzhCJFMMJE5q4ZfYhEraxTpY+5ck="
+        "CodeSha256": "SnuxPOBuPvcr7wXNNA3b2Zd8yD2MlR4q1vhJW7qgMNI="
       }
     },
     "MainCustomS31": {
@@ -284,7 +284,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-ap-south-1-bae94dec-f917",
-          "S3Key": "serverless/aws-serverless-image-compressor/dev/1771612863315-2026-02-20T18:41:03.315Z/custom-resources.zip"
+          "S3Key": "serverless/aws-serverless-image-compressor/dev/1772433730270-2026-03-02T06:42:10.270Z/custom-resources.zip"
         },
         "FunctionName": "aws-serverless-image-compressor-dev-custom-resource-existing-s3",
         "Handler": "s3/handler.handler",
@@ -415,7 +415,7 @@
     "MainLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "MainLambdaVersionKL2WfdGUnkZcAn4UNy2UwBrZtI497xi5LQKmnllM"
+        "Ref": "MainLambdaVersion7JSjkXlU14oNTSnpnV2jjgZyUBd5X0xClRnbba8Tk"
       },
       "Export": {
         "Name": "sls-aws-serverless-image-compressor-dev-MainLambdaFunctionQualifiedArn"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, CheckCircle, Download, Loader2, AlertCircle } from 'lucide-react';
 
-const API_BASE_URL = 'https://nzsx2hp0gl.execute-api.ap-south-1.amazonaws.com'; // Production URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 function App() {
   const [file, setFile] = useState(null);
@@ -60,7 +60,12 @@ function App() {
       if (!response.ok) throw new Error('Upload failed');
 
       const data = await response.json();
-      pollStatus(data.key);
+      // Access the key from the standardized ApiResponse structure (data.data.key)
+      if (data.success && data.data && data.data.key) {
+        pollStatus(data.data.key);
+      } else {
+        throw new Error(data.message || 'Upload failed: Unexpected response structure');
+      }
     } catch (err) {
       setError(err.message);
       setStatus('error');
@@ -74,15 +79,36 @@ function App() {
         const response = await fetch(`${API_BASE_URL}/api/status/${key}`);
         const data = await response.json();
 
-        if (data.status === 'completed') {
+        // Access status and result from the standardized ApiResponse structure
+        if (data.success && data.data && data.data.status === 'completed') {
           clearInterval(interval);
-          setResult(data);
+          setResult(data.data);
           setStatus('completed');
         }
       } catch (err) {
         console.error('Polling error:', err);
       }
     }, 2000);
+  };
+
+  const handleDownload = async (url, filename) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename || 'compressed-image.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download failed:', err);
+      // Fallback: open in new tab if blob download fails
+      window.open(url, '_blank');
+    }
   };
 
   return (
@@ -141,9 +167,12 @@ function App() {
               <button className="button" onClick={() => window.open(result.url || result.s3Url, '_blank')}>
                 <ImageIcon size={20} /> Preview
               </button>
-              <a href={result.url || result.s3Url} download className="button">
+              <button 
+                className="button" 
+                onClick={() => handleDownload(result.downloadUrl || result.url, result.key || 'compressed-image.png')}
+              >
                 <Download size={20} /> Download
-              </a>
+              </button>
             </div>
             
             <button 

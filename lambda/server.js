@@ -1,61 +1,54 @@
 import express from 'express';
-import multer from 'multer';
-import multerS3 from 'multer-s3';
-import { S3Client } from '@aws-sdk/client-s3';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import imageRouter from './routes/image.routes.js';
 
 const app = express();
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
-// Configure Multer for S3 upload
-const upload = multer({
-    storage: multerS3({
-        s3: s3,
-        bucket: process.env.SOURCE_BUCKET,
-        contentType: multerS3.AUTO_CONTENT_TYPE,
-        metadata: (req, file, cb) => {
-            cb(null, { fieldName: file.fieldname });
-        },
-        key: (req, file, cb) => {
-            const fileName = `${Date.now()}-${file.originalname}`;
-            cb(null, fileName);
-        }
-    }),
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'), false);
-        }
-    }
-});
-
+// Middleware
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://img-compressor.cloudvault.cloud'],
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
 app.use(express.json());
+
+// Routes
+app.use('/api', imageRouter);
 
 // Root path for basic health check
 app.get('/', (req, res) => {
-    res.status(200).json({ message: 'Serverless Image Compressor API is running (ESM)' });
-});
-
-// Upload endpoint
-app.post('/upload', upload.single('image'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No image file provided' });
-    }
-
-    res.status(200).json({
-        message: 'Image uploaded successfully to Source Bucket',
-        file: {
-            name: req.file.key,
-            location: req.file.location,
-            bucket: req.file.bucket
-        }
+    res.status(200).json({ 
+        message: 'Serverless Image Compressor API is running (Modular)',
+        version: '1.0.0'
     });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    const statusCode = err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    
+    console.error(`[Error] ${statusCode}: ${message}`);
+    if (err.stack) console.error(err.stack);
+
+    res.status(statusCode).json({
+        success: false,
+        statusCode,
+        message,
+        errors: err.errors || []
+    });
 });
+
+// Conditional listener for local development
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+        console.log(`🚀 Server running locally on http://localhost:${port}`);
+        console.log(`📡 API Endpoints:`);
+        console.log(`   - POST http://localhost:${port}/api/upload`);
+        console.log(`   - GET  http://localhost:${port}/api/status/:key`);
+    });
+}
 
 export default app;

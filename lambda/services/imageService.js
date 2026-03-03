@@ -1,4 +1,5 @@
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from 'sharp';
 import { config } from '../config/env.js';
 
@@ -52,6 +53,23 @@ const uploadImage = async (bucket, key, buffer, contentType) => {
  */
 const deleteImage = async (bucket, key) => {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+};
+
+/**
+ * Generates a pre-signed URL for an object in S3
+ */
+export const getPresignedUrl = async (bucket, key, expiresIn = 3600, downloadName = null) => {
+  const commandInput = {
+    Bucket: bucket,
+    Key: key,
+  };
+
+  if (downloadName) {
+    commandInput.ResponseContentDisposition = `attachment; filename="${downloadName}"`;
+  }
+
+  const command = new GetObjectCommand(commandInput);
+  return await getSignedUrl(s3, command, { expiresIn });
 };
 
 /**
