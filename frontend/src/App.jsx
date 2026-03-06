@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Upload, Image as ImageIcon, CheckCircle, Download, Loader2, AlertCircle } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -60,7 +60,6 @@ function App() {
       if (!response.ok) throw new Error('Upload failed');
 
       const data = await response.json();
-      // Access the key from the standardized ApiResponse structure (data.data.key)
       if (data.success && data.data && data.data.key) {
         pollStatus(data.data.key);
       } else {
@@ -79,7 +78,6 @@ function App() {
         const response = await fetch(`${API_BASE_URL}/api/status/${key}`);
         const data = await response.json();
 
-        // Access status and result from the standardized ApiResponse structure
         if (data.success && data.data && data.data.status === 'completed') {
           clearInterval(interval);
           setResult(data.data);
@@ -96,7 +94,6 @@ function App() {
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = filename || 'compressed-image.jpg';
@@ -106,7 +103,6 @@ function App() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error('Download failed:', err);
-      // Fallback: open in new tab if blob download fails
       window.open(url, '_blank');
     }
   };
@@ -114,70 +110,89 @@ function App() {
   return (
     <div className="container">
       <h1 className="title">ImageShrink</h1>
-      <p className="subtitle">Premium Serverless Image Compression</p>
+      <p className="subtitle">Serverless Image Compression</p>
 
       <div className="glass-card">
+
+        {/* ── Idle: Dropzone ── */}
         {status === 'idle' && (
-          <div 
+          <div
             className={`dropzone ${isDragging ? 'active' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => document.getElementById('file-input').click()}
           >
-            <input 
-              type="file" 
-              id="file-input" 
-              hidden 
+            <input
+              type="file"
+              id="file-input"
+              hidden
               onChange={handleFileChange}
               accept="image/*"
             />
-            <Upload className="upload-icon" size={48} color="#818cf8" style={{ marginBottom: '1rem' }} />
-            <h3>Drag & Drop your image</h3>
+            <Upload
+              className="upload-icon"
+              size={52}
+              style={{ marginBottom: '1.25rem' }}
+            />
+            <h3>Drag &amp; Drop your image</h3>
             <p>or click to browse from files</p>
           </div>
         )}
 
+        {/* ── Uploading / Processing ── */}
         {(status === 'uploading' || status === 'processing') && (
           <div className="status-container">
-            <Loader2 className="loading-icon" size={48} color="#818cf8" />
-            <h3 style={{ marginTop: '1.5rem' }}>
+            <Loader2 className="loading-icon" size={52} />
+            <h3>
               {status === 'uploading' ? 'Uploading...' : 'Processing & Compressing...'}
             </h3>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: status === 'uploading' ? '40%' : '75%' }}></div>
+              <div
+                className="progress-fill"
+                style={{ width: status === 'uploading' ? '40%' : '75%' }}
+              />
             </div>
           </div>
         )}
 
+        {/* ── Completed ── */}
         {status === 'completed' && result && (
           <div className="result-container">
-            <CheckCircle size={48} color="#10b981" />
-            <h3 style={{ margin: '1rem 0' }}>Ready for Download!</h3>
-            
-            <div className="preview-box" style={{ margin: '2rem 0', borderRadius: '12px', overflow: 'hidden' }}>
-              <img 
-                src={result.url || result.s3Url} 
-                alt="Compressed" 
+            <CheckCircle size={52} color="var(--nb-green)" strokeWidth={3} />
+            <h3>Ready for Download!</h3>
+
+            <div className="preview-box">
+              <img
+                src={result.url || result.s3Url}
+                alt="Compressed"
                 style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', margin: '0 auto' }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button className="button" onClick={() => window.open(result.url || result.s3Url, '_blank')}>
-                <ImageIcon size={20} /> Preview
-              </button>
-              <button 
-                className="button" 
-                onClick={() => handleDownload(result.downloadUrl || result.url, result.key || 'compressed-image.png')}
+            <div className="button-row">
+              <button
+                className="button"
+                onClick={() => window.open(result.url || result.s3Url, '_blank')}
               >
-                <Download size={20} /> Download
+                <ImageIcon size={18} /> Preview
+              </button>
+              <button
+                className="button"
+                onClick={() =>
+                  handleDownload(
+                    result.downloadUrl || result.url,
+                    result.key || 'compressed-image.png'
+                  )
+                }
+              >
+                <Download size={18} /> Download
               </button>
             </div>
-            
-            <button 
-              className="button" 
-              style={{ marginTop: '2rem', background: 'transparent', border: '1px solid #475569' }}
+
+            <button
+              className="button button-ghost"
+              style={{ marginTop: '1.5rem' }}
               onClick={() => { setStatus('idle'); setFile(null); setResult(null); }}
             >
               Upload Another
@@ -185,16 +200,18 @@ function App() {
           </div>
         )}
 
+        {/* ── Error ── */}
         {status === 'error' && (
           <div className="error-container">
-            <AlertCircle size={48} color="#ef4444" />
-            <h3 style={{ margin: '1rem 0' }}>Something went wrong</h3>
+            <AlertCircle size={52} />
+            <h3>Something went wrong</h3>
             <p className="error-text">{error}</p>
-            <button className="button" style={{ marginTop: '1rem' }} onClick={() => setStatus('idle')}>
+            <button className="button" style={{ marginTop: '0.75rem' }} onClick={() => setStatus('idle')}>
               Try Again
             </button>
           </div>
         )}
+
       </div>
     </div>
   );

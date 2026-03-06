@@ -1,64 +1,73 @@
-# AWS Serverless Image Compression Pipeline
+# ImageShrink: Premium Serverless Image Compressor
 
-A serverless, event-driven backend system that automatically compresses images uploaded via an Express.js endpoint or directly to an S3 bucket.
+A full-stack, event-driven serverless application that automatically compresses images using AWS Lambda, S3, and a modern React frontend.
+
+**Live URL**: [https://img-compressor.cloudvault.cloud/](https://img-compressor.cloudvault.cloud/)
 
 ## 🚀 Features
-- **Express.js on Lambda**: Single endpoint `POST /upload` for easy file uploads via Postman.
-- **Automated Compression**: S3-triggered Lambda automatically compresses images when they land in the source bucket.
+- **Premium React Frontend**: Sleek, glassmorphic UI for easy drag-and-drop uploads.
+- **Express.js on Lambda**: Robust API handling image uploads and status checks.
+- **Automated Compression**: S3-triggered Lambda automatically processes images when they land in the source bucket.
 - **Sharp Processing**: High-performance image processing using `libvips` (Sharp).
-- **Hybrid Handler**: A single code base handles both web requests and cloud events.
 - **Smart Cleanup**: Automatically removes original images from the source bucket after successful compression.
+- **Secure Access**: Pre-signed URLs for secure image preview and download.
 
 ## 🏗 Architecture
-1. **User** sends an image to the API Gateway.
-2. **Lambda (Express)** uploads the image to **Bucket A (Source)**.
-3. **S3 Event** triggers **Lambda (Processor)**.
-4. **Lambda** compresses the image and uploads it to **Bucket B (Destination)**.
+1. **User** uploads an image via the **React Frontend**.
+2. **Lambda (Express)** receives the upload and puts it into **Bucket A (Source)**.
+3. **S3 Event** triggers the **Lambda (Processor)** logic.
+4. **Lambda** compresses the image using Sharp and uploads it to **Bucket B (Destination)**.
 5. **Lambda** deletes the original from **Bucket A**.
+6. **Frontend** polls the status and provides a **Pre-signed Download URL**.
 
 ## 📂 Project Structure
 ```text
-aws-serverless-image-compressor
+serverless-image-compressor
 │
-├── lambda/
-│   ├── index.js (Main Handler)
-│   ├── server.js (Express App)
-│   ├── processor.js (Compression Logic)
-│   ├── package.json
+├── frontend/               # React (Vite) Frontend
+│   ├── src/
+│   │   ├── App.jsx         # Main UI Logic
+│   │   └── App.css         # Premium Styling
+│   └── ...
 │
-├── infrastructure/
-│   └── setup-notes.md (AWS Configuration Guide)
+├── lambda/                 # AWS Lambda Backend (Express + Processor)
+│   ├── controllers/        # API Controllers
+│   ├── services/           # Business Logic (S3 & Compression)
+│   ├── index.js            # Lambda Entry Point
+│   ├── server.js           # Express App
+│   └── ...
 │
+├── serverless.yml          # Serverless Framework Configuration
 └── README.md
 ```
 
-## � Performance Demonstration
-
-Our pipeline achieves massive compression ratios by stripping metadata and using optimized encoders.
-
-### 1. Uploading via Postman
-A high-resolution image (~562 KB) is sent to the `/upload` endpoint.
-![Postman Upload](screenshots/upload_test.png)
-
-### 2. Result in S3
-The processed image in the destination bucket is reduced to only **34.8 KB**—a **93% reduction** in size!
-![Compression Result](screenshots/compression_result.png)
-
 ## 🛠 Setup & Deployment
-1. **S3 Buckets**: Create a Source and Destination bucket.
-2. **Lambda**: Deploy the `lambda/` folder with `sharp` (installed for Linux).
-3. **IAM**: Ensure Lambda has `s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` permissions.
-4. **Environment Variables**:
-   - `SOURCE_BUCKET`: Your raw bucket name.
-   - `COMPRESSED_BUCKET`: Your destination bucket name.
-   - `IMAGE_QUALITY`: Defaults to 80.
-   - `RESIZE_WIDTH`: Defaults to 800.
 
-## 🧪 Testing with Postman
-1. Create a `POST` request to your API Gateway URL.
-2. Under the **Body** tab, select **form-data**.
-3. Add a key `image`, select a large JPG/PNG file.
-4. Send the request and watch the magic happen in S3!
+### Backend (AWS Lambda)
+1. **S3 Buckets**: Create a Source and Destination bucket.
+2. **Environment Variables**:
+   - `SOURCE_BUCKET`: Raw images bucket.
+   - `COMPRESSED_BUCKET`: Destination bucket.
+   - `CLOUDFRONT_DOMAIN`: (Optional) For CDN delivery.
+3. **Deploy**:
+   ```bash
+   cd lambda
+   npm install
+   serverless deploy
+   ```
+
+### Frontend (React)
+1. **Environment Variables**:
+   - `VITE_API_URL`: Your deployed API Gateway URL.
+2. **Development**:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+## 🧪 Performance Demonstration
+Our pipeline achieves massive compression ratios by stripping metadata and using optimized encoders. A typical high-resolution image (~562 KB) is often reduced to under **40 KB**—a **90%+ reduction** with minimal quality loss!
 
 ---
 Developed as part of the AWS Serverless Image Compressor project.
