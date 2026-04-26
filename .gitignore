@@ -2,4 +2,5 @@
 lambda/node_modules
 frontend/node_modules
 frontend/public
-
+image-compressor-user_credentials.csv   
+image-compressor-user_accessKeys.csv

@@ -7,7 +7,11 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://img-compressor.cloudvault.cloud'],
+    origin: [
+        'http://localhost:5173', 
+        'https://img-compressor.cloudvault.cloud',
+        'http://varun-frontend-hosting.s3-website-ap-south-1.amazonaws.com'
+    ],
     methods: ['GET', 'POST'],
     credentials: true
 }));
